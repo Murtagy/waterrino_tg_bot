@@ -18,9 +18,6 @@ BaseModel = declarative_base()
 
 
 
-T = TypeVar("T", bound="BaseModel")
-
-
 def TableId() -> Column[int]:
     return Column(Integer, primary_key=True, index=True, unique=True)
 

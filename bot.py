@@ -242,7 +242,7 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
             if len(last_hour_drinks) > 0:
                 continue
 
-            now_in_user_time = (datetime.time.utcnow() + datetime.timedelta(hours=user_settings.utc_offset)).time()
+            now_in_user_time = (datetime.datetime.utcnow() + datetime.timedelta(hours=user_settings.utc_offset)).time()
             if user_settings.start_time <= now_in_user_time <= user_settings.end_time:
                 continue
 
