@@ -38,6 +38,7 @@ DEFAULT_USER_SETTINGS = UserSettings(
     start_time=datetime.time(hour=8),
     daynorm=1650,
     end_time=datetime.time(hour=21),
+    utc_offset=3,
     notify=True,
 )
 
@@ -110,6 +111,10 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         pass
 
     if args[0] == ["daynorm"]:
+        # todo
+        pass
+
+    if args[0] == ["utc_offset"]:
         # todo
         pass
 
@@ -227,18 +232,23 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
             )
             res = await session.execute(q)
             last_hour_drinks = list(res.scalars())
+            user_settings = db_user.get_settings()
 
             res = await session.execute(drinks_today_q(db_user.user_id))
             drinks_today = list(res.scalars())
             drank_today = sum([d.mililitres for d in drinks_today])
-            if drank_today > db_user.get_settings().daynorm:
+            if drank_today > user_settings.daynorm:
                 continue
             if len(last_hour_drinks) > 0:
                 continue
 
-            if db_user.chat_id:
+            now_in_user_time = (datetime.time.utcnow() + datetime.timedelta(hours=user_settings.utc_offset)).time()
+            if user_settings.start_time <= now_in_user_time <= user_settings.end_time:
+                continue
+
+            if db_user.chat_id and user_settings.notify:
                 logger.info(f'Time to drink {db_user.user_id=}, {db_user.chat_id=}')
-                text = f'{random.choice(REMINDERS)} ({drank_today}/{db_user.get_settings().daynorm})'
+                text = f'{random.choice(REMINDERS)} ({drank_today}/{user_settings.daynorm})'
                 await context.bot.send_message(chat_id=db_user.chat_id, text=text)
 
 

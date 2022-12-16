@@ -22,6 +22,7 @@ class UserSettings(BM):
     end_time: datetime.time
     notify: bool
     daynorm: int
+    utc_offset: int
 
 
 class User(BaseModel):
