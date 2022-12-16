@@ -75,6 +75,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 rf"Hi {user.mention_html()}! Nice to know you. Check your /settings (this will also start notifications) ",
             )
         else:
+            db_user.enabled = True
+            session.add(db_user)
             await update.message.reply_html(
                 f"Hello again. I already know you, continue to other commands or get /help"
             )
