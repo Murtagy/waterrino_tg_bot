@@ -28,6 +28,7 @@ class User(BaseModel):
     __tablename__ = "users"
 
     user_id = Column(Integer, index=True, unique=True, primary_key=True)
+    chat_id = Column(Integer)
     created_at = TableCreatedAt()
     enabled = Column(Boolean, nullable=False)
     settings = Column(JSON, nullable=False)

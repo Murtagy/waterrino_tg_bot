@@ -1,0 +1,6 @@
+aiosqlite==0.17.0
+python-telegram-bot==20.0a6
+python-telegram-bot[job-queue]
+pydantic==1.10.2
+sqlalchemy==2.0.0b4
+
