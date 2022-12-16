@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_USER_SETTINGS = UserSettings(
-    start_time=datetime.time(hour=8),
+    start_time=datetime.time(hour=9),
     daynorm=1650,
     end_time=datetime.time(hour=21),
     utc_offset=3,
