@@ -1,6 +1,7 @@
 import asyncio
 
 async def work():
+    print(asyncio.get_event_loop())
     print(42)
 
 async def loop(coro, wait_time):
@@ -18,4 +19,5 @@ async def main():
     '''
 
 
-asyncio.run(main())
+if __name__ == '__main__':
+    asyncio.run(main())

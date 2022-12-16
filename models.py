@@ -27,8 +27,7 @@ class UserSettings(BM):
 class User(BaseModel):
     __tablename__ = "users"
 
-    user_id = TableId()
-    tg_id = Column(Integer)
+    user_id = Column(Integer, index=True, unique=True, primary_key=True)
     created_at = TableCreatedAt()
     enabled = Column(Boolean, nullable=False)
     settings = Column(JSON, nullable=False)
