@@ -3,7 +3,7 @@ from typing import Generator, Optional, Type, TypeVar
 
 from sqlalchemy import Column, DateTime, Integer, create_engine
 from sqlalchemy import Column, DateTime, Integer
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine
 
 # from sqlalchemy.orm import declarative_base  # 2.0 style

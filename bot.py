@@ -243,7 +243,7 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
                 continue
 
             now_in_user_time = (datetime.datetime.utcnow() + datetime.timedelta(hours=user_settings.utc_offset)).time()
-            if user_settings.start_time <= now_in_user_time <= user_settings.end_time:
+            if not (user_settings.start_time <= now_in_user_time <= user_settings.end_time):
                 continue
 
             if db_user.chat_id and user_settings.notify:
