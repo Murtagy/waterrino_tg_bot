@@ -1,20 +1,11 @@
-from sqlalchemy import (
-    JSON,
-    Boolean,
-    Column,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    LargeBinary,
-    String,
-)
-
-from db import BaseModel, TableCreatedAt, TableId
-from pydantic import BaseModel as BM
-
 import datetime
 import json
+
+from pydantic import BaseModel as BM
+from sqlalchemy import (JSON, Boolean, Column, DateTime, Float, ForeignKey,
+                        Integer, LargeBinary, String)
+
+from db import BaseModel, TableCreatedAt, TableId
 
 
 class UserSettings(BM):
@@ -45,4 +36,3 @@ class Drink(BaseModel):
     created_at = TableCreatedAt()
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
     mililitres = Column(Integer, nullable=False)
-

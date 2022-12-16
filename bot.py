@@ -5,7 +5,6 @@ import logging
 import os
 import random
 
-
 from telegram import __version__ as TG_VER
 
 try:
@@ -125,7 +124,6 @@ async def drink_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     assert user is not None
     db_user = await get_user_and_reply_dont_know_you(update, user)
 
-
     text = update.message.text[len("/drink ") :]
 
     if not text.isdigit():
@@ -141,7 +139,6 @@ async def drink_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         drink = Drink(user_id=db_user.user_id, mililitres=mililitres)
         session.add(drink)
         await session.flush()
-
 
         res = await session.execute(drinks_today_q(db_user.user_id))
         drinks_today = res.scalars()
@@ -169,12 +166,14 @@ async def get_user(user) -> User | None:
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("Help!")
 
+
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db_user = await get_user_and_reply_dont_know_you(update, update.effective_user)
-    await update.message.reply_text("Bye!")
     async with db.SessionLocal() as session, session.begin():
         db_user.enabled = False
         session.add(db_user)
+    await update.message.reply_text("Bye!")
+
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     print(update)
@@ -190,13 +189,14 @@ def drinks_today_q(user_id: int):
     )
     return q
 
+
 # Tasks management
 async def work(context: ContextTypes.DEFAULT_TYPE):
     print(context)
 
 
 async def remind(context: ContextTypes.DEFAULT_TYPE):
-    logger.info('Reminding...')
+    logger.info("Reminding...")
 
     REMINDERS = [
         "Hey sweetie, it's time to drink!",
@@ -217,7 +217,7 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
         "Mililitres...Li-li-li... What a weird word. Let's drink in litres already.",
         "A water a day keeps the doctor away (c) Waterrino",
         "One more",
-        "A cup in, a cup out (c) Waterrino"
+        "A cup in, a cup out (c) Waterrino",
     ]
 
     async with db.SessionLocal() as session, session.begin():
@@ -242,13 +242,18 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
             if len(last_hour_drinks) > 0:
                 continue
 
-            now_in_user_time = (datetime.datetime.utcnow() + datetime.timedelta(hours=user_settings.utc_offset)).time()
-            if not (user_settings.start_time <= now_in_user_time <= user_settings.end_time):
+            now_in_user_time = (
+                datetime.datetime.utcnow()
+                + datetime.timedelta(hours=user_settings.utc_offset)
+            ).time()
+            if not (
+                user_settings.start_time <= now_in_user_time <= user_settings.end_time
+            ):
                 continue
 
             if db_user.chat_id and user_settings.notify:
-                logger.info(f'Time to drink {db_user.user_id=}, {db_user.chat_id=}')
-                text = f'{random.choice(REMINDERS)} ({drank_today}/{user_settings.daynorm})'
+                logger.info(f"Time to drink {db_user.user_id=}, {db_user.chat_id=}")
+                text = f"{random.choice(REMINDERS)} ({drank_today}/{user_settings.daynorm})"
                 await context.bot.send_message(chat_id=db_user.chat_id, text=text)
 
 
@@ -273,12 +278,14 @@ def start_bot() -> None:
     application.add_handler(CommandHandler("settings", settings_command))
     application.add_handler(CommandHandler("drink", drink_command))
     application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("stop", help_command))
+    application.add_handler(CommandHandler("stop", stop_command))
 
     # on non command i.e message - echo the message on Telegram
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
 
-    application.job_queue.run_repeating(remind, interval=60*90, first=3)  # each 1.5 hour 
+    application.job_queue.run_repeating(
+        remind, interval=60 * 90, first=3
+    )  # each 1.5 hour
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling()
