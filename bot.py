@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_USER_SETTINGS = UserSettings(
     start_time=datetime.time(hour=9),
-    daynorm=1650,
+    daynorm=2000,
     end_time=datetime.time(hour=21),
     utc_offset=3,
     notify=True,
@@ -228,10 +228,10 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
             q = select(Drink).where(
                 Drink.user_id == db_user.user_id,
                 Drink.created_at
-                > (datetime.datetime.utcnow() - datetime.timedelta(hours=1)),
+                > (datetime.datetime.utcnow() - datetime.timedelta(minutes=45)),
             )
             res = await session.execute(q)
-            last_hour_drinks = list(res.scalars())
+            last_period_drinks = list(res.scalars())
             user_settings = db_user.get_settings()
 
             res = await session.execute(drinks_today_q(db_user.user_id))
@@ -239,7 +239,7 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
             drank_today = sum([d.mililitres for d in drinks_today])
             if drank_today > user_settings.daynorm:
                 continue
-            if len(last_hour_drinks) > 0:
+            if len(last_period_drinks) > 0:
                 continue
 
             now_in_user_time = (
@@ -284,8 +284,8 @@ def start_bot() -> None:
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
 
     application.job_queue.run_repeating(
-        remind, interval=60 * 90, first=3
-    )  # each 1.5 hour
+        remind, interval=60 * 60, first=3
+    )  # each 1 hour
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling()
