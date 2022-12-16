@@ -75,8 +75,6 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 rf"Hi {user.mention_html()}! Nice to know you. Check your /settings (this will also start notifications) ",
             )
         else:
-            db_user.enabled = True
-            session.add(db_user)
             await update.message.reply_html(
                 f"Hello again. I already know you, continue to other commands or get /help"
             )
@@ -230,7 +228,7 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
             q = select(Drink).where(
                 Drink.user_id == db_user.user_id,
                 Drink.created_at
-                > (datetime.datetime.utcnow() - datetime.timedelta(minutes=45)),
+                > (datetime.datetime.utcnow() - datetime.timedelta(minutes=60)),
             )
             res = await session.execute(q)
             last_period_drinks = list(res.scalars())
@@ -286,8 +284,8 @@ def start_bot() -> None:
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
 
     application.job_queue.run_repeating(
-        remind, interval=60 * 60, first=3
-    )  # each 1 hour
+        remind, interval=60 * 10, first=3
+    )  # each 10 minutes
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling()
