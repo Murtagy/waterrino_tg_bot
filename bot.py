@@ -271,6 +271,8 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
 
             res = await session.execute(drinks_today_q(db_user.user_id))
             drinks_today = list(res.scalars())
+            if len(drinks_today) > 200:
+                raise ValueError(f'Too many drinks per day {len(drinks_today)}. Preventing database flud')
             drank_today = sum([d.mililitres for d in drinks_today])
             if drank_today > user_settings.daynorm:
                 continue
