@@ -161,6 +161,8 @@ async def drink_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             await update.message.reply_text(
                 "Too much for a single drink. Single drink should be below 2000"
             )
+            return ConversationHandler.END
+
         drink = Drink(user_id=db_user.user_id, mililitres=mililitres)
         session.add(drink)
         await session.flush()
