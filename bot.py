@@ -307,12 +307,6 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(chat_id=db_user.chat_id, text=text)
 
 
-async def loop(coro, wait_time):
-    while True:
-        await asyncio.create_task(coro())
-        await asyncio.sleep(wait_time)
-
-
 # sync setup
 def init_db() -> None:
     db.BaseModel.metadata.create_all(bind=db.sync_engine)
