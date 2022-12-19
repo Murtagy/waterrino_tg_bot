@@ -309,6 +309,9 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
                 # drinking tempo is higher than expected, we don't want to notify too much
                 continue
 
+            if datetime.date.today().isoweekday in user_settings.skip_notification_days:
+                continue
+
             if db_user.chat_id and user_settings.notify:
                 logger.info(f"Time to drink {db_user.user_id=}, {db_user.chat_id=}")
                 text = f"{random.choice(REMINDERS)} ({drank_today}/{user_settings.daynorm})"

@@ -23,6 +23,7 @@ class UserSettings(BM):
     notify: bool
     daynorm: int
     utc_offset: int
+    skip_notification_days: list[int] = [6, 7]
 
 
 class User(BaseModel):
