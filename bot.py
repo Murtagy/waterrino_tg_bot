@@ -4,6 +4,7 @@ import functools
 import logging
 import os
 import random
+import traceback
 
 from telegram import __version__ as TG_VER
 
@@ -20,8 +21,14 @@ if __version_info__ < (20, 0, 0, "alpha", 1):
     )
 from sqlalchemy import delete, select
 from telegram import Update
-from telegram.ext import (Application, CommandHandler, ContextTypes,
-                          MessageHandler, filters)
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    ConversationHandler,
+    MessageHandler,
+    filters,
+)
 
 import db
 from models import Drink, User, UserSettings
@@ -39,6 +46,7 @@ DEFAULT_USER_SETTINGS = UserSettings(
     end_time=datetime.time(hour=21),
     utc_offset=3,
     notify=True,
+    skip_notification_days=[6, 7],
 )
 
 
@@ -101,6 +109,10 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         # todo
         pass
 
+    if args[0] == ["skip_notification_days"]:
+        # todo
+        pass
+
     if args[0] == ["start_time"]:
         # todo
         pass
@@ -118,17 +130,26 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         pass
 
 
+DRINKING = 0
+
+
 @command_wrapper
 async def drink_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     assert user is not None
     db_user = await get_user_and_reply_dont_know_you(update, user)
 
-    text = update.message.text[len("/drink ") :]
+    text = update.message.text
+    if text == "/drink":
+        await update.message.reply_text("How much (mililitres?)")
+        return DRINKING
+    elif text == "stop":
+        return ConversationHandler.END
+    elif not text.isdigit():
+        await update.message.reply_text("Need mililitres or send 'stop'")
+        return DRINKING
 
-    if not text.isdigit():
-        await update.message.reply_text("Need mililitres")
-        return
+    assert text.isdigit()
 
     async with db.SessionLocal() as session, session.begin():
         if not db_user.chat_id:
@@ -147,6 +168,8 @@ async def drink_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             f"Today: {drank_today} ({db_user.get_settings().daynorm})"
         )
 
+    return ConversationHandler.END
+
 
 async def get_user_and_reply_dont_know_you(update: Update, user) -> User:
     db_user = await get_user(user)
@@ -164,7 +187,7 @@ async def get_user(user) -> User | None:
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("Help!")
+    await update.message.reply_text("I am not very helpful yet")
 
 
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -175,9 +198,21 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await update.message.reply_text("Bye!")
 
 
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    print(update)
-    await update.message.reply_text(update.message.text)
+async def daboodidaboodai(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text("I am not that smart. I am only a humble bot")
+
+
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text(
+        "Something went wrong. I am sorry, if the issue persists - let my master know https://github.com/Murtagy/waterrino_tg_bot/issues"
+    )
+    tb_list = traceback.format_exception(
+        None, context.error, context.error.__traceback__
+    )
+    tb_string = "".join(tb_list)
+    logger.error("Something went wrong")
+    logger.error(tb_string)
+    return ConversationHandler.END
 
 
 # Queries
@@ -251,6 +286,21 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
             ):
                 continue
 
+            day_len = user_settings.end_time - user_settings.start_time
+            t1 = user_settings.start_time
+            t2 = user_settings.end_time
+            day_len = (
+                datetime.datetime.combine(datetime.date.today(), t2)
+                - datetime.datetime.combine(datetime.date.today(), t1)
+            ).total_seconds()
+            time_passed = (
+                datetime.datetime.combine(datetime.date.today(), now_in_user_time)
+                - datetime.datetime.combine(datetime.date.today(), t1)
+            ).total_seconds()
+            if (time_passed / day_len) > (drank_today / user_settings.daynorm):
+                # drinking tempo is higher than expected, we don't want to notify too much
+                continue
+
             if db_user.chat_id and user_settings.notify:
                 logger.info(f"Time to drink {db_user.user_id=}, {db_user.chat_id=}")
                 text = f"{random.choice(REMINDERS)} ({drank_today}/{user_settings.daynorm})"
@@ -276,16 +326,31 @@ def start_bot() -> None:
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("settings", settings_command))
-    application.add_handler(CommandHandler("drink", drink_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("stop", stop_command))
+    application.add_error_handler(error_handler)
+
+    application.add_handler(
+        ConversationHandler(
+            entry_points=[CommandHandler("drink", drink_command)],
+            states={
+                DRINKING: [
+                    MessageHandler(
+                        filters=filters.TEXT & (~filters.COMMAND),
+                        callback=drink_command,
+                    ),
+                ]
+            },
+            fallbacks=[CommandHandler("something", daboodidaboodai)],
+        )
+    )
 
     # on non command i.e message - echo the message on Telegram
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, daboodidaboodai)
+    )
 
-    application.job_queue.run_repeating(
-        remind, interval=60 * 10, first=3
-    )  # each 10 minutes
+    application.job_queue.run_repeating(remind, interval=60 * 20, first=3)
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling()

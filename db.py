@@ -2,6 +2,7 @@ import datetime
 from typing import Generator, Optional, Type, TypeVar
 
 from sqlalchemy import Column, DateTime, Integer, create_engine
+
 # from sqlalchemy.orm import declarative_base  # 2.0 style
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base

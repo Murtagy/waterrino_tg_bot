@@ -2,8 +2,17 @@ import datetime
 import json
 
 from pydantic import BaseModel as BM
-from sqlalchemy import (JSON, Boolean, Column, DateTime, Float, ForeignKey,
-                        Integer, LargeBinary, String)
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    String,
+)
 
 from db import BaseModel, TableCreatedAt, TableId
 
