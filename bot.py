@@ -41,15 +41,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-DEFAULT_USER_SETTINGS = UserSettings(
-    start_time=datetime.time(hour=9),
-    daynorm=2000,
-    end_time=datetime.time(hour=23),
-    utc_offset=3,
-    skip_notification_days=[6, 7],
-)
-
-
 class End(Exception):
     pass
 
@@ -79,7 +70,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
         if db_user is None:
             db_user = User(
-                user_id=user.id, enabled=True, settings=DEFAULT_USER_SETTINGS.json()
+                user_id=user.id,
+                enabled=True,
+                settings=json.loads(UserSettings().json()),
             )
             session.add(db_user)
             await update.message.reply_html(

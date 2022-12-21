@@ -2,26 +2,16 @@ import datetime
 import json
 
 from pydantic import BaseModel as BM
-from sqlalchemy import (
-    JSON,
-    Boolean,
-    Column,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    LargeBinary,
-    String,
-)
+from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer
 
 from db import BaseModel, TableCreatedAt, TableId
 
 
 class UserSettings(BM):
-    start_time: datetime.time
-    end_time: datetime.time
-    daynorm: int
-    utc_offset: int
+    start_time: datetime.time = datetime.time(hour=9)
+    end_time: datetime.time = datetime.time(hour=21)
+    daynorm: int = 2000
+    utc_offset: int = 3
     skip_notification_days: list[int] = [6, 7]
 
 
@@ -34,10 +24,10 @@ class User(BaseModel):
     enabled = Column(Boolean, nullable=False)  # notify or not
     settings = Column(
         JSON, nullable=False
-    )  # this works as string for reasons I don't know yet
+    )
 
     def get_settings(self) -> UserSettings:
-        return UserSettings(**json.loads(self.settings))
+        return UserSettings(**self.settings)
 
 
 class Drink(BaseModel):
