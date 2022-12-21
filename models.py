@@ -20,7 +20,6 @@ from db import BaseModel, TableCreatedAt, TableId
 class UserSettings(BM):
     start_time: datetime.time
     end_time: datetime.time
-    notify: bool
     daynorm: int
     utc_offset: int
     skip_notification_days: list[int] = [6, 7]

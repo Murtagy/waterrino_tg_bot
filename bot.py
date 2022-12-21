@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import functools
+import json
 import logging
 import os
 import random
@@ -45,7 +46,6 @@ DEFAULT_USER_SETTINGS = UserSettings(
     daynorm=2000,
     end_time=datetime.time(hour=23),
     utc_offset=3,
-    notify=True,
     skip_notification_days=[6, 7],
 )
 
@@ -106,35 +106,38 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             db_user.chat_id = update.message.chat.id
             session.add(db_user)
 
-    text = update.message.text[len("/settings ") :]
-    args = text.split(" ")
-    if args == [""]:
-        await update.message.reply_text(str(db_user.settings))
-        return
+        text = update.message.text[len("/settings ") :]
+        args = text.split(" ")
+        if args == [""]:
+            settings = json.loads(db_user.get_settings().json())
+            settings["notify"] = db_user.enabled
+            await update.message.reply_text(json.dumps((settings)))
+            return
 
-    if args[0] == ["notify"]:
-        # todo
-        pass
+        if args == ["notify"]:
+            db_user.enabled = not db_user.enabled
+            session.add(db_user)
+            await update.message.reply_text("Saved")
 
-    if args[0] == ["skip_notification_days"]:
-        # todo
-        pass
+        if args[0] == "skip_notification_days":
+            # todo
+            pass
 
-    if args[0] == ["start_time"]:
-        # todo
-        pass
+        if args[0] == "start_time":
+            # todo
+            pass
 
-    if args[0] == ["end_time"]:
-        # todo
-        pass
+        if args[0] == "end_time":
+            # todo
+            pass
 
-    if args[0] == ["daynorm"]:
-        # todo
-        pass
+        if args[0] == "daynorm":
+            # todo
+            pass
 
-    if args[0] == ["utc_offset"]:
-        # todo
-        pass
+        if args[0] == "utc_offset":
+            # todo
+            pass
 
 
 DRINKING = 0
@@ -247,6 +250,15 @@ def drinks_today_q(user_id: int):
     return q
 
 
+def drinks_last_period(user_id: int, *, minutes: int):
+    q = select(Drink).where(
+        Drink.user_id == user_id,
+        Drink.created_at
+        > (datetime.datetime.utcnow() - datetime.timedelta(minutes=minutes)),
+    )
+    return q
+
+
 # Tasks management
 async def work(context: ContextTypes.DEFAULT_TYPE):
     print(context)
@@ -282,11 +294,7 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
         res = await session.execute(q)
         db_users = res.scalars()
         for db_user in list(db_users):
-            q = select(Drink).where(
-                Drink.user_id == db_user.user_id,
-                Drink.created_at
-                > (datetime.datetime.utcnow() - datetime.timedelta(minutes=60)),
-            )
+            q = drinks_last_period(db_user.user_id, minutes=60)
             res = await session.execute(q)
             last_period_drinks = list(res.scalars())
             user_settings = db_user.get_settings()
@@ -307,9 +315,10 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
                 datetime.datetime.utcnow()
                 + datetime.timedelta(hours=user_settings.utc_offset)
             ).time()
-            if not (
+            period_to_drink = (
                 user_settings.start_time <= now_in_user_time <= user_settings.end_time
-            ):
+            )
+            if not period_to_drink:
                 continue
 
             def time_delta(a: datetime.time, b: datetime.time) -> datetime.timedelta:
@@ -331,7 +340,7 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
             if datetime.date.today().isoweekday in user_settings.skip_notification_days:
                 continue
 
-            if db_user.chat_id and user_settings.notify:
+            if db_user.chat_id:
                 logger.info(f"Time to drink {db_user.user_id=}, {db_user.chat_id=}")
                 text = f"{random.choice(REMINDERS)} ({drank_today}/{user_settings.daynorm})"
                 await context.bot.send_message(chat_id=db_user.chat_id, text=text)
