@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_USER_SETTINGS = UserSettings(
     start_time=datetime.time(hour=9),
     daynorm=2000,
-    end_time=datetime.time(hour=21),
+    end_time=datetime.time(hour=23),
     utc_offset=3,
     notify=True,
     skip_notification_days=[6, 7],
@@ -68,7 +68,10 @@ def command_wrapper(func):
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
+
     assert user is not None
+    assert update.message is not None
+
     async with db.SessionLocal() as session, session.begin():
         q = select(User).where(User.user_id == user.id)
         res = await session.execute(q)
@@ -83,6 +86,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 rf"Hi {user.mention_html()}! Nice to know you. Check your /settings (this will also start notifications) ",
             )
         else:
+            db_user.enabled = True
             await update.message.reply_html(
                 f"Hello again. I already know you, continue to other commands or get /help"
             )
@@ -91,7 +95,10 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 @command_wrapper
 async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
+
     assert user is not None
+    assert update.message is not None
+
     db_user = await get_user_and_reply_dont_know_you(update, user)
 
     async with db.SessionLocal() as session, session.begin():
@@ -102,7 +109,7 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     text = update.message.text[len("/settings ") :]
     args = text.split(" ")
     if args == [""]:
-        await update.message.reply_text(db_user.settings)
+        await update.message.reply_text(str(db_user.settings))
         return
 
     if args[0] == ["notify"]:
@@ -134,9 +141,12 @@ DRINKING = 0
 
 
 @command_wrapper
-async def drink_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def drink_command(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int | None:
     user = update.effective_user
     assert user is not None
+    assert update.message is not None
     db_user = await get_user_and_reply_dont_know_you(update, user)
 
     text = update.message.text
@@ -193,6 +203,7 @@ async def get_user(user) -> User | None:
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    assert update.message is not None
     await update.message.reply_text("I am not very helpful yet")
 
 
@@ -201,24 +212,29 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     async with db.SessionLocal() as session, session.begin():
         db_user.enabled = False
         session.add(db_user)
+    assert update.message is not None
     await update.message.reply_text("Bye!")
 
 
 async def daboodidaboodai(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    assert update.message is not None
     await update.message.reply_text("I am not that smart. I am only a humble bot")
 
 
-async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(
-        "Something went wrong. I am sorry, if the issue persists - let my master know https://github.com/Murtagy/waterrino_tg_bot/issues"
-    )
-    tb_list = traceback.format_exception(
-        None, context.error, context.error.__traceback__
-    )
-    tb_string = "".join(tb_list)
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update and isinstance(update, Update):
+        if update.message:
+            await update.message.reply_text(
+                "Something went wrong. I am sorry, if the issue persists - let my master know https://github.com/Murtagy/waterrino_tg_bot/issues"
+            )
+
     logger.error("Something went wrong")
-    logger.error(tb_string)
-    return ConversationHandler.END
+    if context.error:
+        tb_list = traceback.format_exception(
+            None, context.error, context.error.__traceback__
+        )
+        tb_string = "".join(tb_list)
+        logger.error(tb_string)
 
 
 # Queries
@@ -278,7 +294,9 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
             res = await session.execute(drinks_today_q(db_user.user_id))
             drinks_today = list(res.scalars())
             if len(drinks_today) > 200:
-                raise ValueError(f'Too many drinks per day {len(drinks_today)}. Preventing database flud')
+                raise ValueError(
+                    f"Too many drinks per day {len(drinks_today)}. Preventing database flud"
+                )
             drank_today = sum([d.mililitres for d in drinks_today])
             if drank_today > user_settings.daynorm:
                 continue
@@ -294,18 +312,19 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
             ):
                 continue
 
-            day_len = user_settings.end_time - user_settings.start_time
-            t1 = user_settings.start_time
-            t2 = user_settings.end_time
-            day_len = (
-                datetime.datetime.combine(datetime.date.today(), t2)
-                - datetime.datetime.combine(datetime.date.today(), t1)
+            def time_delta(a: datetime.time, b: datetime.time) -> datetime.timedelta:
+                td = datetime.date.today()
+                return datetime.datetime.combine(td, a) - datetime.datetime.combine(
+                    td, b
+                )
+
+            day_len = time_delta(
+                user_settings.end_time, user_settings.start_time
             ).total_seconds()
-            time_passed = (
-                datetime.datetime.combine(datetime.date.today(), now_in_user_time)
-                - datetime.datetime.combine(datetime.date.today(), t1)
+            time_passed = time_delta(
+                now_in_user_time, user_settings.start_time
             ).total_seconds()
-            if (time_passed / day_len) > (drank_today / user_settings.daynorm):
+            if (time_passed / day_len) < (drank_today / user_settings.daynorm):
                 # drinking tempo is higher than expected, we don't want to notify too much
                 continue
 
@@ -316,6 +335,10 @@ async def remind(context: ContextTypes.DEFAULT_TYPE):
                 logger.info(f"Time to drink {db_user.user_id=}, {db_user.chat_id=}")
                 text = f"{random.choice(REMINDERS)} ({drank_today}/{user_settings.daynorm})"
                 await context.bot.send_message(chat_id=db_user.chat_id, text=text)
+            else:
+                logger.info(
+                    f"Notifications disabled or chat_id unknown {db_user.user_id=}"
+                )
 
 
 # sync setup

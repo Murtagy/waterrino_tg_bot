@@ -32,8 +32,10 @@ class User(BaseModel):
     user_id = Column(Integer, index=True, unique=True, primary_key=True)
     chat_id = Column(Integer)
     created_at = TableCreatedAt()
-    enabled = Column(Boolean, nullable=False)
-    settings = Column(JSON, nullable=False)
+    enabled = Column(Boolean, nullable=False)  # notify or not
+    settings = Column(
+        JSON, nullable=False
+    )  # this works as string for reasons I don't know yet
 
     def get_settings(self) -> UserSettings:
         return UserSettings(**json.loads(self.settings))

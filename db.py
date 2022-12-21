@@ -21,9 +21,9 @@ SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 BaseModel = declarative_base()
 
 
-def TableId() -> Column[int]:
+def TableId() -> Column[Integer]:
     return Column(Integer, primary_key=True, index=True, unique=True)
 
 
-def TableCreatedAt() -> Column[datetime.datetime]:
+def TableCreatedAt() -> Column[DateTime]:
     return Column(DateTime(timezone=True), default=func.now())
